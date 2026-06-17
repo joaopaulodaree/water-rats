@@ -126,6 +126,17 @@ function PhotoLightbox({ src, onClose }: { src: string; onClose: () => void }) {
 
 function FeedCard({ item, currentUserId }: { item: FeedItem; currentUserId: string }) {
   const [lightbox, setLightbox] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const qc = useQueryClient();
+  const supabase = createClient();
+
+  async function handleDelete() {
+    await supabase.from("water_logs").delete().eq("id", item.id);
+    qc.invalidateQueries({ queryKey: ["feed"] });
+    qc.invalidateQueries({ queryKey: ["ranking"] });
+  }
+
+  const isOwn = item.user_id === currentUserId;
 
   return (
     <div className="bg-white border-b border-[#e2e8f0] px-4 py-4">
@@ -139,6 +150,34 @@ function FeedCard({ item, currentUserId }: { item: FeedItem; currentUserId: stri
           <span>💧</span>
           <span className="font-bold text-[#0891b2] text-sm">{item.amount_ml}ml</span>
         </div>
+        {isOwn && (
+          <div className="relative ml-1">
+            {!confirmDelete ? (
+              <button
+                onClick={() => setConfirmDelete(true)}
+                className="text-[#94a3b8] hover:text-[#64748b] text-lg leading-none px-1"
+                aria-label="Opções"
+              >
+                ⋯
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleDelete}
+                  className="text-xs font-semibold text-[#ef4444] hover:text-[#dc2626]"
+                >
+                  Apagar
+                </button>
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  className="text-xs text-[#94a3b8] hover:text-[#64748b]"
+                >
+                  Cancelar
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {item.photo_url && (
