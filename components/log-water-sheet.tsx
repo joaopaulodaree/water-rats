@@ -69,16 +69,29 @@ export function LogWaterSheet({ onClose, onAchievements }: LogWaterSheetProps) {
         .from("water-logs-photos")
         .upload(path, photoFile, { cacheControl: "31536000", upsert: false });
 
-      if (!uploadErr) {
-        const { data: urlData } = supabase.storage
-          .from("water-logs-photos")
-          .getPublicUrl(path);
-        // 3. UPDATE with photo_url
-        await supabase
-          .from("water_logs")
-          .update({ photo_url: urlData.publicUrl })
-          .eq("id", log.id);
+      if (uploadErr) {
+        // Log saved without photo — show error but still post the log
+        setError("Foto não enviada (erro no upload). Seu registro foi salvo sem ela.");
+        supabase.rpc("check_achievements", { p_user_id: user.id, p_log_id: log.id }).then(async ({ data: newIds }) => {
+          if (newIds && newIds.length > 0) {
+            const { data: achs } = await supabase.from("achievements").select("icon, name, description").in("id", newIds);
+            if (achs && achs.length > 0) onAchievements(achs);
+          }
+        });
+        qc.invalidateQueries({ queryKey: ["feed"] });
+        qc.invalidateQueries({ queryKey: ["ranking"] });
+        setSubmitting(false);
+        return;
       }
+
+      const { data: urlData } = supabase.storage
+        .from("water-logs-photos")
+        .getPublicUrl(path);
+      // 3. UPDATE with photo_url
+      await supabase
+        .from("water_logs")
+        .update({ photo_url: urlData.publicUrl })
+        .eq("id", log.id);
     }
 
     // 4. check_achievements (fire-and-forget)
