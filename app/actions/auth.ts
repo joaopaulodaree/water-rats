@@ -9,7 +9,7 @@ export async function login(formData: FormData) {
   const password = formData.get("password") as string;
 
   const { error } = await supabase.auth.signInWithPassword({
-    email: `${username}@waterrats.local`,
+    email: `${username}@waterrats.app`,
     password,
   });
 
@@ -37,7 +37,7 @@ export async function register(formData: FormData) {
   }
 
   const { error } = await supabase.auth.signUp({
-    email: `${username}@waterrats.local`,
+    email: `${username}@waterrats.app`,
     password,
     options: {
       data: { display_name: displayName },
