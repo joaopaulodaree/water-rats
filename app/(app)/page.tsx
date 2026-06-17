@@ -111,8 +111,8 @@ function PhotoLightbox({ src, onClose }: { src: string; onClose: () => void }) {
       onClick={onClose}
     >
       <button
-        onClick={onClose}
-        className="absolute top-4 right-4 text-white text-3xl leading-none p-2"
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
+        className="absolute top-4 right-4 z-10 text-white text-3xl leading-none p-2"
         aria-label="Fechar"
       >
         ×

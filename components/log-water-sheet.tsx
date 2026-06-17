@@ -12,19 +12,19 @@ const ML_PRESETS = [200, 350, 500, 750, 1000];
 function generateCaption(amountMl: number): string {
   const hour = new Date().getHours();
 
-  if (amountMl >= 2000) return "Dois litros de uma vez. Você é uma lenda 🐋";
-  if (amountMl >= 1000) return "Um litro inteiro! Modo besta ativado 🦈";
-  if (amountMl >= 750)  return "Quase um litro de uma vez. Respeito 🏋️";
-  if (amountMl >= 500)  return "Meio litro de uma vez, assim eu gosto 💪";
-  if (amountMl <= 50)   return "Até a gotinha conta ☔";
+  if (amountMl >= 2000) return "Tô treinando pra virar peixe 🐟";
+  if (amountMl >= 1000) return "Um litro. Modo aquário ativado 🐠";
+  if (amountMl >= 750)  return "Quase um litro. Sou rato d'água mesmo 🐀";
+  if (amountMl >= 500)  return "Meio litro de uma vez. Glub glub 🫧";
+  if (amountMl <= 50)   return "Tá com seca hein 🌵";
 
-  if (hour >= 5  && hour < 8)  return "Hidratação matinal antes de todo mundo 🌅";
-  if (hour >= 8  && hour < 11) return "Água para começar o dia do jeito certo ☀️";
-  if (hour >= 11 && hour < 14) return "Pausinha para hidratar no almoço 🍽️";
-  if (hour >= 14 && hour < 17) return "Tarde mais leve com água 💦";
-  if (hour >= 17 && hour < 20) return "Final de tarde hidratado 🌆";
-  if (hour >= 20 && hour < 23) return "Água à noite também conta 🌙";
-  return "Insônia hidratada 🦉";
+  if (hour >= 5  && hour < 8)  return "Acordei hidratando, sou diferenciado 💅";
+  if (hour >= 8  && hour < 11) return "Água antes do café. Sou atleta 🏅";
+  if (hour >= 11 && hour < 14) return "Almoço? Água primeiro. Prioridades 🙄";
+  if (hour >= 14 && hour < 17) return "3 da tarde e ainda de pé, a água ajuda 🫠";
+  if (hour >= 17 && hour < 20) return "Saindo do trabalho hidratado. Quase gente boa 😎";
+  if (hour >= 20 && hour < 23) return "Hidratando antes de dormir tipo adulto responsável 😴";
+  return "Quem tá acordado a essa hora precisa de mais que água 👻";
 }
 
 interface LogWaterSheetProps {
