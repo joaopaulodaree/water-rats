@@ -104,7 +104,29 @@ function ReactionBar({ logId, reactions, myReaction, currentUserId }: {
   );
 }
 
+function PhotoLightbox({ src, onClose }: { src: string; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+      onClick={onClose}
+    >
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 text-white text-3xl leading-none p-2"
+        aria-label="Fechar"
+      >
+        ×
+      </button>
+      <div className="relative w-full h-full max-w-2xl mx-auto" onClick={(e) => e.stopPropagation()}>
+        <Image src={src} alt="Foto expandida" fill className="object-contain" />
+      </div>
+    </div>
+  );
+}
+
 function FeedCard({ item, currentUserId }: { item: FeedItem; currentUserId: string }) {
+  const [lightbox, setLightbox] = useState(false);
+
   return (
     <div className="bg-white border-b border-[#e2e8f0] px-4 py-4">
       <div className="flex items-center gap-3 mb-3">
@@ -120,9 +142,19 @@ function FeedCard({ item, currentUserId }: { item: FeedItem; currentUserId: stri
       </div>
 
       {item.photo_url && (
-        <div className="relative w-full rounded-xl overflow-hidden mb-3" style={{ paddingBottom: "56.25%" }}>
-          <Image src={item.photo_url} alt="Foto do registro" fill className="object-cover" />
-        </div>
+        <>
+          <button
+            onClick={() => setLightbox(true)}
+            className="relative w-full rounded-xl overflow-hidden mb-3 block cursor-zoom-in"
+            style={{ paddingBottom: "56.25%" }}
+            aria-label="Expandir foto"
+          >
+            <Image src={item.photo_url} alt="Foto do registro" fill className="object-cover" />
+          </button>
+          {lightbox && (
+            <PhotoLightbox src={item.photo_url} onClose={() => setLightbox(false)} />
+          )}
+        </>
       )}
 
       {item.caption && (

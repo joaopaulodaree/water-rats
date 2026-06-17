@@ -48,6 +48,16 @@ export function LogWaterSheet({ onClose, onAchievements }: LogWaterSheetProps) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setError("Sessão expirada."); setSubmitting(false); return; }
 
+    // 0b. Ensure profile exists (users created before the trigger was applied)
+    await supabase.from("profiles").upsert({
+      id: user.id,
+      display_name:
+        user.user_metadata?.display_name ??
+        user.user_metadata?.username ??
+        user.email?.split("@")[0] ??
+        "?",
+    }, { onConflict: "id", ignoreDuplicates: true });
+
     // 1. INSERT log (photo_url null)
     const { data: log, error: insertErr } = await supabase
       .from("water_logs")
@@ -70,8 +80,7 @@ export function LogWaterSheet({ onClose, onAchievements }: LogWaterSheetProps) {
         .upload(path, photoFile, { cacheControl: "31536000", upsert: false });
 
       if (uploadErr) {
-        // Log saved without photo — show error but still post the log
-        setError("Foto não enviada (erro no upload). Seu registro foi salvo sem ela.");
+        setError(`Foto não enviada: ${uploadErr.message}. Registro salvo sem ela.`);
         supabase.rpc("check_achievements", { p_user_id: user.id, p_log_id: log.id }).then(async ({ data: newIds }) => {
           if (newIds && newIds.length > 0) {
             const { data: achs } = await supabase.from("achievements").select("icon, name, description").in("id", newIds);
@@ -133,7 +142,7 @@ export function LogWaterSheet({ onClose, onAchievements }: LogWaterSheetProps) {
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-bold text-[#0f172a]">
-              {step === "photo" ? "Foto (opcional)" : step === "amount" ? "Quantos ml?" : "Legenda"}
+              {step === "photo" ? "Adicionar foto" : step === "amount" ? "Quantos ml?" : "Legenda"}
             </h2>
             <button onClick={onClose} className="text-[#64748b] text-2xl leading-none" aria-label="Fechar">×</button>
           </div>
@@ -155,12 +164,6 @@ export function LogWaterSheet({ onClose, onAchievements }: LogWaterSheetProps) {
               >
                 <span className="text-4xl">📷</span>
                 <span className="font-medium">Tirar foto ou escolher da galeria</span>
-              </button>
-              <button
-                onClick={() => setStep("amount")}
-                className="w-full text-center text-sm text-[#64748b] underline"
-              >
-                Pular — logar sem foto
               </button>
             </div>
           )}
