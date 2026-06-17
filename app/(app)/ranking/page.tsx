@@ -7,11 +7,19 @@ import { useState } from "react";
 
 type Tab = "hoje" | "semana" | "total";
 
+interface BadgeSummary {
+  achievement_id: string;
+  name: string;
+  icon: string;
+  count: number;
+}
+
 interface RankingEntry {
   user_id: string;
   display_name: string;
   avatar_url: string | null;
   total_ml: number;
+  badges: BadgeSummary[];
 }
 
 const TABS: { id: Tab; label: string }[] = [
@@ -21,6 +29,24 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 const MEDALS = ["🥇", "🥈", "🥉"];
+
+function BadgePills({ badges }: { badges: BadgeSummary[] }) {
+  if (badges.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-1 mt-1.5">
+      {badges.map((b) => (
+        <span
+          key={b.achievement_id}
+          className="inline-flex items-center gap-1 text-xs font-medium bg-[#f0fdf4] text-[#166534] px-2 py-0.5 rounded-full border border-[#bbf7d0]"
+        >
+          <span className="font-semibold">{b.count}x</span>
+          <span>{b.icon}</span>
+          <span>{b.name}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
 
 async function fetchRanking(tab: Tab): Promise<RankingEntry[]> {
   const supabase = createClient();
@@ -69,9 +95,43 @@ async function fetchRanking(tab: Tab): Promise<RankingEntry[]> {
         display_name: profile?.display_name ?? "?",
         avatar_url: profile?.avatar_url ?? null,
         total_ml: 0,
+        badges: [],
       };
     }
     totals[row.user_id].total_ml += row.amount_ml;
+  }
+
+  // Fetch badges for all users in this ranking
+  const userIds = Object.keys(totals);
+  if (userIds.length > 0) {
+    const { data: badgeRows } = await supabase
+      .from("user_achievements")
+      .select("user_id, achievement_id, achievements(name, icon)")
+      .in("user_id", userIds);
+
+    // Initialize badges arrays (guard against missing rows)
+    for (const entry of Object.values(totals)) {
+      entry.badges = [];
+    }
+
+    // Group by user_id + achievement_id to compute count
+    const badgeMap: Record<string, Record<string, BadgeSummary>> = {};
+    for (const row of badgeRows ?? []) {
+      const ach = Array.isArray(row.achievements) ? row.achievements[0] : row.achievements;
+      if (!ach) continue;
+      if (!badgeMap[row.user_id]) badgeMap[row.user_id] = {};
+      const key = row.achievement_id;
+      if (!badgeMap[row.user_id][key]) {
+        badgeMap[row.user_id][key] = { achievement_id: key, name: ach.name, icon: ach.icon, count: 0 };
+      }
+      badgeMap[row.user_id][key].count++;
+    }
+
+    // Attach to entries, sorted by count descending
+    for (const entry of Object.values(totals)) {
+      const userBadges = badgeMap[entry.user_id] ?? {};
+      entry.badges = Object.values(userBadges).sort((a, b) => b.count - a.count);
+    }
   }
 
   return Object.values(totals).sort((a, b) => b.total_ml - a.total_ml);
@@ -127,7 +187,7 @@ export default function RankingPage() {
                 i === 0 ? "bg-[#fef9c3]" : "bg-white border border-[#e2e8f0]"
               }`}
             >
-              <div className="w-8 text-center">
+              <div className="w-8 text-center flex-shrink-0">
                 {i < 3 ? (
                   <span className="text-2xl">{MEDALS[i]}</span>
                 ) : (
@@ -137,8 +197,9 @@ export default function RankingPage() {
               <Avatar displayName={entry.display_name} avatarUrl={entry.avatar_url} size={44} />
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-[#0f172a] truncate">{entry.display_name}</p>
+                <BadgePills badges={entry.badges} />
               </div>
-              <div className="flex items-center gap-1 bg-[#ecfeff] px-3 py-1.5 rounded-full">
+              <div className="flex items-center gap-1 bg-[#ecfeff] px-3 py-1.5 rounded-full flex-shrink-0">
                 <span>💧</span>
                 <span className="font-bold text-[#0891b2] text-sm">
                   {entry.total_ml >= 1000
