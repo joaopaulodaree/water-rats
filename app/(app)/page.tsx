@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/client";
 import { Avatar } from "@/components/avatar";
 import Image from "next/image";
 import { useState, useRef, useCallback, useEffect } from "react";
+import { ContextBadge } from "@/components/context-badge";
+import { LEGACY_AUTO_CAPTIONS } from "@/lib/context-label";
 
 const PAGE_SIZE = 10;
 const REACTIONS = ["💧", "🔥", "👏", "💪"];
@@ -85,7 +87,7 @@ function ReactionBar({ logId, reactions, myReaction, currentUserId }: {
   }, {} as Record<string, number>);
 
   return (
-    <div className="flex gap-2 mt-3">
+    <div className="flex gap-2">
       {REACTIONS.map((emoji) => (
         <button
           key={emoji}
@@ -196,16 +198,19 @@ function FeedCard({ item, currentUserId }: { item: FeedItem; currentUserId: stri
         </>
       )}
 
-      {item.caption && (
+      {item.caption && !LEGACY_AUTO_CAPTIONS.has(item.caption) && (
         <p className="text-sm text-[#0f172a] mb-2">{item.caption}</p>
       )}
 
-      <ReactionBar
-        logId={item.id}
-        reactions={item.reactions}
-        myReaction={item.myReaction}
-        currentUserId={currentUserId}
-      />
+      <div className="flex items-center gap-2 mt-3 flex-wrap">
+        <ContextBadge amountMl={item.amount_ml} createdAt={item.created_at} />
+        <ReactionBar
+          logId={item.id}
+          reactions={item.reactions}
+          myReaction={item.myReaction}
+          currentUserId={currentUserId}
+        />
+      </div>
     </div>
   );
 }

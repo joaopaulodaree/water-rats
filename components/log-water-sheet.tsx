@@ -9,23 +9,6 @@ import type { NewAchievement } from "@/app/(app)/layout";
 
 const ML_PRESETS = [200, 350, 500, 750, 1000];
 
-function generateCaption(amountMl: number): string {
-  const hour = new Date().getHours();
-
-  if (amountMl >= 2000) return "Golfinho 🐬";
-  if (amountMl >= 1000) return "Modo aquário 🐠";
-  if (amountMl >= 750)  return "Rato d'água 🐀";
-  if (amountMl >= 500)  return "Glub glub 🫧";
-  if (amountMl <= 50)   return "Seca total 🌵";
-
-  if (hour >= 5  && hour < 8)  return "Madrugador 🌅";
-  if (hour >= 8  && hour < 11) return "Bom dia 💧";
-  if (hour >= 11 && hour < 14) return "Almoço regado 🍽️";
-  if (hour >= 14 && hour < 17) return "Soninho não 🫠";
-  if (hour >= 17 && hour < 20) return "Expediente encerrado 😎";
-  if (hour >= 20 && hour < 23) return "Boa noite 🌙";
-  return "Insônia 👻";
-}
 
 interface LogWaterSheetProps {
   onClose: () => void;
@@ -226,10 +209,7 @@ export function LogWaterSheet({ onClose, onAchievements }: LogWaterSheetProps) {
               </div>
 
               <button
-                onClick={() => {
-                  if (!caption) setCaption(generateCaption(amountMl));
-                  setStep("caption");
-                }}
+                onClick={() => setStep("caption")}
                 disabled={!amountMl || amountMl < 1 || amountMl > 5000}
                 className="w-full h-12 bg-[#0891b2] hover:bg-[#0e7490] text-white font-semibold rounded-xl transition-colors disabled:opacity-50"
               >
