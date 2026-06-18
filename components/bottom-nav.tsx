@@ -87,9 +87,13 @@ export function BottomNav({ onLogWater }: BottomNavProps) {
                 <button
                   onClick={onLogWater}
                   aria-label="Registrar água"
-                  className="w-14 h-14 bg-[#0891b2] hover:bg-[#0e7490] rounded-full flex items-center justify-center shadow-lg transition-colors -mt-5"
+                  className="fab-pulse w-14 h-14 rounded-full flex items-center justify-center -mt-5 active:scale-95 transition-transform"
+                  style={{
+                    background: "linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)",
+                    boxShadow: "0 4px 16px rgba(8,145,178,0.45)",
+                  }}
                 >
-                  <svg width="28" height="28" fill="none" viewBox="0 0 24 24">
+                  <svg width="26" height="26" fill="none" viewBox="0 0 24 24">
                     <path d="M12 5v14M5 12h14" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
                   </svg>
                 </button>
