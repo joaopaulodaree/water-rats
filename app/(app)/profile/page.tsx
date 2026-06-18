@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar } from "@/components/avatar";
+import { AvatarCropModal } from "@/components/avatar-crop-modal";
 import { logout } from "@/app/actions/auth";
 import { useEffect, useRef, useState } from "react";
 import imageCompression from "browser-image-compression";
@@ -57,6 +58,7 @@ function StatCard({ label, value }: { label: string; value: string }) {
 export default function ProfilePage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
   const qc = useQueryClient();
@@ -72,18 +74,27 @@ export default function ProfilePage() {
     staleTime: 60 * 1000,
   });
 
-  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file || !userId) return;
+    if (!file) return;
+    // Reset imediatamente para permitir re-seleção do mesmo arquivo
+    e.target.value = "";
+    setCropSrc(URL.createObjectURL(file));
+  }
+
+  async function handleCropConfirm(blob: Blob) {
+    if (!userId) return;
+    const src = cropSrc!;
+    setCropSrc(null);
     setUploading(true);
     try {
-      const compressed = await imageCompression(file, {
+      const compressed = await imageCompression(blob as File, {
         maxSizeMB: 0.3,
         maxWidthOrHeight: 400,
         useWebWorker: true,
+        fileType: "image/jpeg",
       });
-      const ext = compressed.name.split(".").pop() ?? "jpg";
-      const path = `${userId}/avatar.${ext}`;
+      const path = `${userId}/avatar.jpg`;
       const { error: uploadErr } = await supabase.storage
         .from("water-logs-photos")
         .upload(path, compressed, { cacheControl: "3600", upsert: true });
@@ -98,8 +109,13 @@ export default function ProfilePage() {
       qc.invalidateQueries({ queryKey: ["profile", userId] });
     } finally {
       setUploading(false);
-      e.target.value = "";
+      URL.revokeObjectURL(src);
     }
+  }
+
+  function handleCropCancel(src: string) {
+    setCropSrc(null);
+    URL.revokeObjectURL(src);
   }
 
   if (status === "pending") {
@@ -117,6 +133,14 @@ export default function ProfilePage() {
     : `${profile.total_ml}ml`;
 
   return (
+    <>
+    {cropSrc && (
+      <AvatarCropModal
+        src={cropSrc}
+        onConfirm={handleCropConfirm}
+        onCancel={() => handleCropCancel(cropSrc)}
+      />
+    )}
     <div className="flex flex-col">
       <div className="px-4 pt-4 pb-3 border-b border-[#e2e8f0] bg-white sticky top-0 z-10">
         <h1 className="text-xl font-bold text-[#0f172a]">Perfil</h1>
@@ -164,5 +188,6 @@ export default function ProfilePage() {
         </form>
       </div>
     </div>
+    </>
   );
 }
