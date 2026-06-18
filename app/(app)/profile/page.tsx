@@ -1,10 +1,11 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar } from "@/components/avatar";
 import { logout } from "@/app/actions/auth";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import imageCompression from "browser-image-compression";
 
 interface ProfileStats {
   display_name: string;
@@ -55,7 +56,10 @@ function StatCard({ label, value }: { label: string; value: string }) {
 
 export default function ProfilePage() {
   const [userId, setUserId] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
+  const qc = useQueryClient();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
@@ -67,6 +71,36 @@ export default function ProfilePage() {
     enabled: userId !== null,
     staleTime: 60 * 1000,
   });
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !userId) return;
+    setUploading(true);
+    try {
+      const compressed = await imageCompression(file, {
+        maxSizeMB: 0.3,
+        maxWidthOrHeight: 400,
+        useWebWorker: true,
+      });
+      const ext = compressed.name.split(".").pop() ?? "jpg";
+      const path = `${userId}/avatar.${ext}`;
+      const { error: uploadErr } = await supabase.storage
+        .from("water-logs-photos")
+        .upload(path, compressed, { cacheControl: "3600", upsert: true });
+      if (uploadErr) throw uploadErr;
+      const { data: urlData } = supabase.storage
+        .from("water-logs-photos")
+        .getPublicUrl(path);
+      await supabase
+        .from("profiles")
+        .update({ avatar_url: urlData.publicUrl })
+        .eq("id", userId);
+      qc.invalidateQueries({ queryKey: ["profile", userId] });
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  }
 
   if (status === "pending") {
     return (
@@ -89,12 +123,24 @@ export default function ProfilePage() {
       </div>
 
       <div className="px-4 py-6 flex flex-col items-center">
-        <Avatar
-          displayName={profile.display_name}
-          avatarUrl={profile.avatar_url}
-          size={80}
-          className="mb-3"
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleAvatarChange}
         />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="relative mb-3 rounded-full"
+          aria-label="Trocar foto de perfil"
+        >
+          <Avatar displayName={profile.display_name} avatarUrl={profile.avatar_url} size={80} />
+          <span className="absolute bottom-0 right-0 w-7 h-7 bg-[#0891b2] rounded-full flex items-center justify-center text-white text-sm border-2 border-white">
+            {uploading ? <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : "📷"}
+          </span>
+        </button>
         <h2 className="text-2xl font-bold text-[#0f172a]">{profile.display_name}</h2>
         <p className="text-sm text-[#64748b] mt-1">
           Membro desde {new Date(profile.member_since).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
