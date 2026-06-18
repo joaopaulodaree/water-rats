@@ -102,9 +102,11 @@ export default function ProfilePage() {
       const { data: urlData } = supabase.storage
         .from("water-logs-photos")
         .getPublicUrl(path);
+      // Cache-busting: mesmo path entre uploads, então força re-fetch com timestamp
+      const avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
       await supabase
         .from("profiles")
-        .update({ avatar_url: urlData.publicUrl })
+        .update({ avatar_url: avatarUrl })
         .eq("id", userId);
       qc.invalidateQueries({ queryKey: ["profile", userId] });
     } finally {

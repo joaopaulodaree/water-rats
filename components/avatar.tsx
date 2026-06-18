@@ -26,6 +26,7 @@ export function Avatar({ displayName, avatarUrl, size = 40, className = "" }: Av
         height={size}
         className={`rounded-full object-cover ${className}`}
         style={{ width: size, height: size }}
+        loading="eager"
       />
     );
   }
