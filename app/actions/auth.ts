@@ -29,6 +29,9 @@ export async function register(formData: FormData) {
   if (username.length < 3) {
     return { error: "Username deve ter pelo menos 3 caracteres." };
   }
+  if (!/^[a-z0-9_.\-]+$/.test(username)) {
+    return { error: "Username só pode ter letras (sem acento), números, _ . -" };
+  }
   if (password.length < 6) {
     return { error: "Senha deve ter pelo menos 6 caracteres." };
   }

@@ -50,10 +50,15 @@ export default function RegisterPage() {
               type="text"
               autoComplete="username"
               autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               required
+              pattern="[a-zA-Z0-9_.\-]+"
+              title="Só letras sem acento, números, _ . -"
               className="w-full h-12 px-4 rounded-xl border border-[#e2e8f0] text-[#0f172a] text-base focus:outline-none focus:border-[#0891b2] focus:ring-2 focus:ring-[#0891b2]/20"
               placeholder="joao_paulo"
             />
+            <p className="text-xs text-[#94a3b8] mt-1">Só letras sem acento, números, _ . -</p>
           </div>
 
           <div>
