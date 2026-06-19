@@ -9,6 +9,9 @@ interface Achievement {
   name: string;
   description: string;
   icon: string;
+  is_secret?: boolean;
+  hidden_name?: string | null;
+  hidden_description?: string | null;
   earned: boolean;
   earned_at: string | null;
 }
@@ -35,17 +38,25 @@ async function fetchAchievements(userId: string): Promise<Achievement[]> {
   const supabase = createClient();
 
   const [{ data: all }, { data: earned }] = await Promise.all([
-    supabase.from("achievements").select("id, name, description, icon"),
+    supabase.from("achievements").select("id, name, description, icon, is_secret, hidden_name, hidden_description"),
     supabase.from("user_achievements").select("achievement_id, earned_at").eq("user_id", userId),
   ]);
 
   const earnedMap = new Map((earned ?? []).map((e) => [e.achievement_id, e.earned_at]));
 
-  return (all ?? []).map((a) => ({
-    ...a,
-    earned: earnedMap.has(a.id),
-    earned_at: earnedMap.get(a.id) ?? null,
-  }));
+  return (all ?? []).map((a) => {
+    const earned = earnedMap.has(a.id);
+    const name = !earned && a.is_secret ? a.hidden_name ?? "Conquista Secreta!" : a.name;
+    const description = !earned && a.is_secret ? a.hidden_description ?? "Esta conquista é secreta." : a.description;
+
+    return {
+      ...a,
+      name,
+      description,
+      earned,
+      earned_at: earnedMap.get(a.id) ?? null,
+    };
+  });
 }
 
 export default function AchievementsPage() {

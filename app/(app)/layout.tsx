@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { BottomNav } from "@/components/bottom-nav";
 import { AchievementToast } from "@/components/achievement-toast";
 import { LogWaterSheet } from "@/components/log-water-sheet";
@@ -17,6 +17,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const handleAchievements = useCallback((achievements: NewAchievement[]) => {
     if (achievements.length > 0) setPendingAchievements(achievements);
+  }, []);
+
+  useEffect(() => {
+    const handleNewAchievements = (event: Event) => {
+      const data = (event as CustomEvent<NewAchievement[]>).detail;
+      if (Array.isArray(data) && data.length > 0) {
+        setPendingAchievements(data);
+      }
+    };
+
+    window.addEventListener("new-achievements", handleNewAchievements as EventListener);
+    return () => window.removeEventListener("new-achievements", handleNewAchievements as EventListener);
   }, []);
 
   return (

@@ -88,6 +88,40 @@ export interface Database {
           }
         ];
       };
+      comments: {
+        Row: {
+          id: string;
+          log_id: string;
+          user_id: string;
+          body: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          log_id: string;
+          user_id: string;
+          body: string;
+        };
+        Update: {
+          body?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "comments_log_id_fkey";
+            columns: ["log_id"];
+            isOneToOne: false;
+            referencedRelation: "water_logs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "comments_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       achievements: {
         Row: {
           id: string;

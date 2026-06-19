@@ -3,6 +3,7 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar } from "@/components/avatar";
+import { CommentSection } from "@/components/comment-section";
 import Image from "next/image";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { ContextBadge } from "@/components/context-badge";
@@ -10,6 +11,14 @@ import { LEGACY_AUTO_CAPTIONS } from "@/lib/context-label";
 
 const PAGE_SIZE = 10;
 const REACTIONS = ["💧", "🔥", "👏", "💪"];
+
+interface CommentPreview {
+  id: string;
+  user_id: string;
+  body: string;
+  created_at: string;
+  profile: { display_name: string; avatar_url: string | null };
+}
 
 interface FeedItem {
   id: string;
@@ -21,6 +30,8 @@ interface FeedItem {
   profile: { display_name: string; avatar_url: string | null };
   reactions: { emoji: string; user_id: string }[];
   myReaction: string | null;
+  comment_count: number;
+  previewComments: CommentPreview[];
 }
 
 function timeAgo(iso: string): string {
@@ -31,14 +42,33 @@ function timeAgo(iso: string): string {
   return `${Math.floor(diff / 86400)}d`;
 }
 
-function ReactionBar({ logId, reactions, myReaction, currentUserId }: {
+type FeedQueryData = {
+  pages: FeedItem[][];
+};
+
+type ReactionBarProps = {
   logId: string;
+  ownerId: string;
   reactions: FeedItem["reactions"];
   myReaction: string | null;
   currentUserId: string;
-}) {
+};
+
+function ReactionBar({ logId, ownerId, reactions, myReaction, currentUserId }: ReactionBarProps) {
   const qc = useQueryClient();
   const supabase = createClient();
+
+  async function dispatchAchievements(achievementIds: string[] | null | undefined) {
+    if (!achievementIds || achievementIds.length === 0) return;
+    const { data: achs, error } = await supabase
+      .from("achievements")
+      .select("icon, name, description")
+      .in("id", achievementIds as string[]);
+
+    if (!error && achs && achs.length > 0) {
+      window.dispatchEvent(new CustomEvent("new-achievements", { detail: achs }));
+    }
+  }
 
   const toggleMutation = useMutation({
     mutationFn: async (emoji: string) => {
@@ -56,12 +86,12 @@ function ReactionBar({ logId, reactions, myReaction, currentUserId }: {
     },
     onMutate: async (emoji) => {
       await qc.cancelQueries({ queryKey: ["feed"] });
-      const prev = qc.getQueryData(["feed"]);
-      qc.setQueryData(["feed"], (old: any) => {
+      const prev = qc.getQueryData<FeedQueryData>(["feed"]);
+      qc.setQueryData<FeedQueryData>(["feed"], (old) => {
         if (!old) return old;
         return {
           ...old,
-          pages: old.pages.map((page: FeedItem[]) =>
+          pages: old.pages.map((page) =>
             page.map((item) => {
               if (item.id !== logId) return item;
               const filtered = item.reactions.filter((r) => r.user_id !== currentUserId);
@@ -78,7 +108,14 @@ function ReactionBar({ logId, reactions, myReaction, currentUserId }: {
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(["feed"], ctx.prev);
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ["feed"] }),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["feed"] });
+      supabase
+        .rpc<string[]>("check_achievements", { p_user_id: ownerId, p_log_id: logId })
+        .then(async ({ data: newIds, error }) => {
+          if (!error) await dispatchAchievements(newIds);
+        });
+    },
   });
 
   const counts = REACTIONS.reduce((acc, emoji) => {
@@ -206,11 +243,19 @@ function FeedCard({ item, currentUserId }: { item: FeedItem; currentUserId: stri
         <ContextBadge amountMl={item.amount_ml} createdAt={item.created_at} />
         <ReactionBar
           logId={item.id}
+          ownerId={item.user_id}
           reactions={item.reactions}
           myReaction={item.myReaction}
           currentUserId={currentUserId}
         />
       </div>
+
+      <CommentSection
+        logId={item.id}
+        currentUserId={currentUserId}
+        commentCount={item.comment_count}
+        previewComments={item.previewComments}
+      />
     </div>
   );
 }
@@ -232,7 +277,8 @@ export default function FeedPage() {
         .select(`
           id, user_id, amount_ml, photo_url, caption, created_at,
           profile:profiles!user_id(display_name, avatar_url),
-          reactions(emoji, user_id)
+          reactions(emoji, user_id),
+          comments!comments_log_id_fkey(id, body, created_at, user_id, profile:profiles!user_id(display_name, avatar_url))
         `)
         .order("created_at", { ascending: false })
         .limit(PAGE_SIZE);
@@ -242,12 +288,46 @@ export default function FeedPage() {
       const { data: rows, error } = await q;
       if (error) throw error;
 
-      return (rows ?? []).map((row: any) => ({
-        ...row,
-        profile: Array.isArray(row.profile) ? row.profile[0] : row.profile,
-        myReaction: (row.reactions as { emoji: string; user_id: string }[])
-          .find((r) => r.user_id === currentUserId)?.emoji ?? null,
-      })) as FeedItem[];
+      type RawFeedRow = {
+        id: string;
+        user_id: string;
+        amount_ml: number;
+        photo_url: string | null;
+        caption: string | null;
+        created_at: string;
+        profile: unknown;
+        reactions: Array<{ emoji: string; user_id: string }> | null;
+        comments: Array<{
+          id: string;
+          body: string;
+          created_at: string;
+          user_id: string;
+          profile: unknown;
+        }> | null;
+      };
+
+      return ((rows ?? []) as RawFeedRow[]).map((row) => {
+        const profile = Array.isArray(row.profile) ? row.profile[0] : row.profile;
+        const comments = Array.isArray(row.comments) ? row.comments : [];
+        const previewComments = comments
+          .slice()
+          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+          .slice(-2)
+          .map((comment) => ({
+            ...comment,
+            profile: Array.isArray(comment.profile) ? comment.profile[0] : comment.profile,
+          }));
+
+        return {
+          ...row,
+          profile,
+          reactions: row.reactions ?? [],
+          myReaction: (row.reactions as { emoji: string; user_id: string }[])
+            .find((r) => r.user_id === currentUserId)?.emoji ?? null,
+          comment_count: comments.length,
+          previewComments,
+        };
+      }) as FeedItem[];
     },
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => {
