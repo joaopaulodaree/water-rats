@@ -130,6 +130,9 @@ export interface Database {
           icon: string;
           condition_type: string;
           condition_value: number;
+          is_secret: boolean;
+          hidden_name: string | null;
+          hidden_description: string | null;
         };
         Insert: {
           id?: string;
@@ -138,11 +141,17 @@ export interface Database {
           icon: string;
           condition_type: string;
           condition_value: number;
+          is_secret?: boolean;
+          hidden_name?: string | null;
+          hidden_description?: string | null;
         };
         Update: {
           name?: string;
           description?: string;
           icon?: string;
+          is_secret?: boolean;
+          hidden_name?: string | null;
+          hidden_description?: string | null;
         };
         Relationships: [];
       };

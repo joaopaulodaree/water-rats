@@ -37,26 +37,44 @@ function getPalette(id: string) {
 async function fetchAchievements(userId: string): Promise<Achievement[]> {
   const supabase = createClient();
 
-  const [{ data: all }, { data: earned }] = await Promise.all([
-    supabase.from("achievements").select("id, name, description, icon, is_secret, hidden_name, hidden_description"),
-    supabase.from("user_achievements").select("achievement_id, earned_at").eq("user_id", userId),
-  ]);
+  try {
+    const [allResult, earnedResult] = await Promise.all([
+      supabase.from("achievements").select("id, name, description, icon, is_secret, hidden_name, hidden_description"),
+      supabase.from("user_achievements").select("achievement_id, earned_at").eq("user_id", userId),
+    ]);
 
-  const earnedMap = new Map((earned ?? []).map((e) => [e.achievement_id, e.earned_at]));
+    if (allResult.error) {
+      console.error("Error fetching achievements:", allResult.error);
+      return [];
+    }
 
-  return (all ?? []).map((a) => {
-    const earned = earnedMap.has(a.id);
-    const name = !earned && a.is_secret ? a.hidden_name ?? "Conquista Secreta!" : a.name;
-    const description = !earned && a.is_secret ? a.hidden_description ?? "Esta conquista é secreta." : a.description;
+    if (earnedResult.error) {
+      console.error("Error fetching user achievements:", earnedResult.error);
+      return [];
+    }
 
-    return {
-      ...a,
-      name,
-      description,
-      earned,
-      earned_at: earnedMap.get(a.id) ?? null,
-    };
-  });
+    const all = allResult.data ?? [];
+    const earned = earnedResult.data ?? [];
+
+    const earnedMap = new Map(earned.map((e) => [e.achievement_id, e.earned_at]));
+
+    return all.map((a) => {
+      const isEarned = earnedMap.has(a.id);
+      const name = !isEarned && a.is_secret ? a.hidden_name ?? "Conquista Secreta!" : a.name;
+      const description = !isEarned && a.is_secret ? a.hidden_description ?? "Esta conquista é secreta." : a.description;
+
+      return {
+        ...a,
+        name,
+        description,
+        earned: isEarned,
+        earned_at: earnedMap.get(a.id) ?? null,
+      };
+    });
+  } catch (error) {
+    console.error("Exception in fetchAchievements:", error);
+    return [];
+  }
 }
 
 export default function AchievementsPage() {
