@@ -192,7 +192,7 @@ export function CommentSection({
       await createMutation.mutateAsync(trimmed);
       setBody("");
       if (!expanded) setExpanded(true);
-      const { data: newIds, error } = await supabase.rpc<string[]>("check_achievements", {
+      const { data: newIds, error } = await supabase.rpc("check_achievements", {
         p_user_id: currentUserId,
         p_log_id: logId,
       });

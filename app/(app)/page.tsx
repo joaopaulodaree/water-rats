@@ -111,7 +111,7 @@ function ReactionBar({ logId, ownerId, reactions, myReaction, currentUserId }: R
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["feed"] });
       supabase
-        .rpc<string[]>("check_achievements", { p_user_id: ownerId, p_log_id: logId })
+        .rpc("check_achievements", { p_user_id: ownerId, p_log_id: logId })
         .then(async ({ data: newIds, error }) => {
           if (!error) await dispatchAchievements(newIds);
         });
