@@ -87,7 +87,7 @@ export function LogWaterSheet({ onClose, onAchievements }: LogWaterSheetProps) {
             const { data: achs } = await supabase.from("achievements").select("icon, name, description").in("id", newIds);
             if (achs && achs.length > 0) onAchievements(achs);
           }
-        });
+        }).catch((err) => console.error("Error checking achievements:", err));
         qc.invalidateQueries({ queryKey: ["feed"] });
         qc.invalidateQueries({ queryKey: ["ranking"] });
         setSubmitting(false);
@@ -115,7 +115,8 @@ export function LogWaterSheet({ onClose, onAchievements }: LogWaterSheetProps) {
             .in("id", newIds);
           if (achs && achs.length > 0) onAchievements(achs);
         }
-      });
+      })
+      .catch((err) => console.error("Error checking achievements:", err));
 
     qc.invalidateQueries({ queryKey: ["feed"] });
     qc.invalidateQueries({ queryKey: ["ranking"] });

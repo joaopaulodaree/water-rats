@@ -261,10 +261,10 @@ export function CommentSection({
           <button
             type="button"
             onClick={handleAddComment}
-            disabled={createMutation.isLoading}
+            disabled={createMutation.isPending}
             className="px-4 py-2 bg-[#0891b2] text-white rounded-2xl text-sm font-semibold disabled:opacity-50"
           >
-            {createMutation.isLoading ? "Enviando..." : "Comentar"}
+            {createMutation.isPending ? "Enviando..." : "Comentar"}
           </button>
         </div>
       </div>
