@@ -110,12 +110,14 @@ function ReactionBar({ logId, ownerId, reactions, myReaction, currentUserId }: R
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["feed"] });
-      supabase
-        .rpc("check_achievements", { p_user_id: ownerId, p_log_id: logId })
-        .then(async ({ data: newIds, error }) => {
+      (async () => {
+        try {
+          const { data: newIds, error } = await supabase.rpc("check_achievements", { p_user_id: ownerId, p_log_id: logId });
           if (!error) await dispatchAchievements(newIds);
-        })
-        .catch((err) => console.error("Error checking achievements:", err));
+        } catch (err) {
+          console.error("Error checking achievements:", err);
+        }
+      })();
     },
   });
 

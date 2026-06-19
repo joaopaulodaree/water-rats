@@ -82,12 +82,17 @@ export function LogWaterSheet({ onClose, onAchievements }: LogWaterSheetProps) {
 
       if (uploadErr) {
         setError(`Foto não enviada: ${uploadErr.message}. Registro salvo sem ela.`);
-        supabase.rpc("check_achievements", { p_user_id: user.id, p_log_id: log.id }).then(async ({ data: newIds }) => {
-          if (newIds && newIds.length > 0) {
-            const { data: achs } = await supabase.from("achievements").select("icon, name, description").in("id", newIds);
-            if (achs && achs.length > 0) onAchievements(achs);
+        (async () => {
+          try {
+            const { data: newIds } = await supabase.rpc("check_achievements", { p_user_id: user.id, p_log_id: log.id });
+            if (newIds && newIds.length > 0) {
+              const { data: achs } = await supabase.from("achievements").select("icon, name, description").in("id", newIds);
+              if (achs && achs.length > 0) onAchievements(achs);
+            }
+          } catch (err) {
+            console.error("Error checking achievements:", err);
           }
-        }).catch((err) => console.error("Error checking achievements:", err));
+        })();
         qc.invalidateQueries({ queryKey: ["feed"] });
         qc.invalidateQueries({ queryKey: ["ranking"] });
         setSubmitting(false);
@@ -105,9 +110,9 @@ export function LogWaterSheet({ onClose, onAchievements }: LogWaterSheetProps) {
     }
 
     // 4. check_achievements (fire-and-forget)
-    supabase
-      .rpc("check_achievements", { p_user_id: user.id, p_log_id: log.id })
-      .then(async ({ data: newIds }) => {
+    (async () => {
+      try {
+        const { data: newIds } = await supabase.rpc("check_achievements", { p_user_id: user.id, p_log_id: log.id });
         if (newIds && newIds.length > 0) {
           const { data: achs } = await supabase
             .from("achievements")
@@ -115,8 +120,10 @@ export function LogWaterSheet({ onClose, onAchievements }: LogWaterSheetProps) {
             .in("id", newIds);
           if (achs && achs.length > 0) onAchievements(achs);
         }
-      })
-      .catch((err) => console.error("Error checking achievements:", err));
+      } catch (err) {
+        console.error("Error checking achievements:", err);
+      }
+    })();
 
     qc.invalidateQueries({ queryKey: ["feed"] });
     qc.invalidateQueries({ queryKey: ["ranking"] });
