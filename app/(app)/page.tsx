@@ -166,7 +166,7 @@ function PhotoLightbox({ src, onClose }: { src: string; onClose: () => void }) {
   );
 }
 
-function FeedCard({ item, currentUserId }: { item: FeedItem; currentUserId: string }) {
+function FeedCard({ item, currentUserId, currentUserDisplayName, currentUserAvatarUrl }: { item: FeedItem; currentUserId: string; currentUserDisplayName: string; currentUserAvatarUrl: string | null }) {
   const [lightbox, setLightbox] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const qc = useQueryClient();
@@ -256,6 +256,8 @@ function FeedCard({ item, currentUserId }: { item: FeedItem; currentUserId: stri
       <CommentSection
         logId={item.id}
         currentUserId={currentUserId}
+        currentUserDisplayName={currentUserDisplayName}
+        currentUserAvatarUrl={currentUserAvatarUrl}
         commentCount={item.comment_count}
         previewComments={item.previewComments}
       />
@@ -265,12 +267,28 @@ function FeedCard({ item, currentUserId }: { item: FeedItem; currentUserId: stri
 
 export default function FeedPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserDisplayName, setCurrentUserDisplayName] = useState<string>("");
+  const [currentUserAvatarUrl, setCurrentUserAvatarUrl] = useState<string | null>(null);
   const loaderRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null));
-  }, []);
+    supabase.auth.getUser().then(async ({ data }) => {
+      const id = data.user?.id ?? null;
+      setCurrentUserId(id);
+      if (id) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("display_name, avatar_url")
+          .eq("id", id)
+          .single();
+        if (profile) {
+          setCurrentUserDisplayName(profile.display_name ?? "");
+          setCurrentUserAvatarUrl(profile.avatar_url ?? null);
+        }
+      }
+    });
+  }, [supabase]);
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, status } = useInfiniteQuery({
     queryKey: ["feed"],
@@ -387,7 +405,7 @@ export default function FeedPage() {
       ) : (
         <>
           {items.map((item) => (
-            <FeedCard key={item.id} item={item} currentUserId={currentUserId!} />
+            <FeedCard key={item.id} item={item} currentUserId={currentUserId!} currentUserDisplayName={currentUserDisplayName} currentUserAvatarUrl={currentUserAvatarUrl} />
           ))}
 
           <div ref={loaderRef} className="flex justify-center py-6">

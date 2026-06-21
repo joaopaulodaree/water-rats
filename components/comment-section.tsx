@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import { Avatar } from "@/components/avatar";
 
 interface CommentRow {
   id: string;
@@ -15,6 +16,8 @@ interface CommentRow {
 interface CommentSectionProps {
   logId: string;
   currentUserId: string;
+  currentUserDisplayName: string;
+  currentUserAvatarUrl: string | null;
   previewComments: CommentRow[];
   commentCount: number;
 }
@@ -46,6 +49,8 @@ type RawCommentInsertRow = {
 export function CommentSection({
   logId,
   currentUserId,
+  currentUserDisplayName,
+  currentUserAvatarUrl,
   previewComments,
   commentCount,
 }: CommentSectionProps) {
@@ -124,7 +129,7 @@ export function CommentSection({
                 comment_count: item.comment_count + 1,
                 previewComments: [
                   ...item.previewComments,
-                  { id: "temp-comment", user_id: currentUserId, body: commentBody.trim(), created_at: new Date().toISOString(), profile: { display_name: "Você", avatar_url: null } },
+                  { id: "temp-comment", user_id: currentUserId, body: commentBody.trim(), created_at: new Date().toISOString(), profile: { display_name: currentUserDisplayName, avatar_url: currentUserAvatarUrl } },
                 ].slice(-2),
               };
             })
@@ -207,65 +212,85 @@ export function CommentSection({
 
   return (
     <div className="mt-3 border-t border-[#e2e8f0] pt-3">
-      <div className="flex items-center justify-between text-xs text-[#64748b] mb-2">
+      <div className="flex items-center justify-between text-xs text-[#64748b] mb-3">
         <span>{commentCount} comentário{commentCount === 1 ? "" : "s"}</span>
-        <button
-          type="button"
-          onClick={() => setExpanded((prev) => !prev)}
-          className="text-[#0891b2] font-semibold"
-        >
-          {expanded ? "Ocultar" : "Ver todos"}
-        </button>
+        {commentCount > 2 && (
+          <button
+            type="button"
+            onClick={() => setExpanded((prev) => !prev)}
+            className="text-[#0891b2] font-semibold"
+          >
+            {expanded ? "Ocultar" : "Ver todos"}
+          </button>
+        )}
       </div>
 
       {displayComments.length > 0 && (
         <div className="space-y-3 mb-3">
           {displayComments.map((comment) => (
-            <div key={comment.id} className="flex items-start gap-3">
-              <div className="flex-1 text-sm text-[#0f172a] bg-[#f8fafc] rounded-2xl p-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-semibold text-[#0f172a]">{comment.profile.display_name}</span>
-                  <span className="text-[#64748b] text-xs">{new Date(comment.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
+            <div key={comment.id} className="flex items-start gap-2.5">
+              <Avatar
+                displayName={comment.profile.display_name}
+                avatarUrl={comment.profile.avatar_url}
+                size={32}
+                className="flex-shrink-0 mt-0.5"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-1.5 flex-wrap">
+                  <span className="font-semibold text-sm text-[#0f172a] truncate max-w-[120px] sm:max-w-none">
+                    {comment.profile.display_name}
+                  </span>
+                  <span className="text-[#94a3b8] text-xs flex-shrink-0">
+                    {new Date(comment.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                  {comment.user_id === currentUserId && (
+                    <button
+                      type="button"
+                      onClick={() => deleteMutation.mutate(comment.id)}
+                      className="text-[#94a3b8] hover:text-[#ef4444] text-xs ml-auto flex-shrink-0 transition-colors"
+                    >
+                      Apagar
+                    </button>
+                  )}
                 </div>
-                <p className="whitespace-pre-wrap">{comment.body}</p>
+                <p className="text-sm text-[#334155] whitespace-pre-wrap leading-snug">{comment.body}</p>
               </div>
-              {comment.user_id === currentUserId && (
-                <button
-                  type="button"
-                  onClick={() => deleteMutation.mutate(comment.id)}
-                  className="text-[#ef4444] text-xs"
-                >
-                  Apagar
-                </button>
-              )}
             </div>
           ))}
         </div>
       )}
 
-      <div className="space-y-2">
-        <textarea
-          value={body}
-          onChange={(e) => {
-            setBody(e.target.value);
-            if (error) setError("");
-          }}
-          placeholder="Adicione um comentário..."
-          maxLength={200}
-          rows={2}
-          className="w-full px-4 py-3 rounded-2xl border border-[#e2e8f0] text-[#0f172a] text-sm resize-none focus:outline-none focus:border-[#0891b2]"
+      <div className="flex items-start gap-2.5">
+        <Avatar
+          displayName={currentUserDisplayName}
+          avatarUrl={currentUserAvatarUrl}
+          size={28}
+          className="flex-shrink-0 mt-2"
         />
-        {error && <p className="text-xs text-[#ef4444]">{error}</p>}
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-xs text-[#64748b]">{body.length}/200</span>
-          <button
-            type="button"
-            onClick={handleAddComment}
-            disabled={createMutation.isPending}
-            className="px-4 py-2 bg-[#0891b2] text-white rounded-2xl text-sm font-semibold disabled:opacity-50"
-          >
-            {createMutation.isPending ? "Enviando..." : "Comentar"}
-          </button>
+        <div className="flex-1 space-y-2">
+          <textarea
+            value={body}
+            onChange={(e) => {
+              setBody(e.target.value);
+              if (error) setError("");
+            }}
+            placeholder="Adicione um comentário..."
+            maxLength={200}
+            rows={2}
+            className="w-full px-3 py-2 rounded-2xl border border-[#e2e8f0] text-[#0f172a] text-sm resize-none focus:outline-none focus:border-[#0891b2] bg-[#f8fafc]"
+          />
+          {error && <p className="text-xs text-[#ef4444]">{error}</p>}
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs text-[#94a3b8]">{body.length}/200</span>
+            <button
+              type="button"
+              onClick={handleAddComment}
+              disabled={createMutation.isPending}
+              className="px-4 py-1.5 bg-[#0891b2] text-white rounded-full text-xs font-semibold disabled:opacity-50"
+            >
+              {createMutation.isPending ? "Enviando..." : "Comentar"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
